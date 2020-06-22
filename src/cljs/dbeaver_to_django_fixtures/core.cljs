@@ -26,15 +26,34 @@
 ;; -------------------------
 ;; Page components
 
-(defn home-page []
-  (fn []
-    [:span.main
-     [:h1 "Welcome to dbeaver-to-django-fixtures"]
-     [:ul
-      [:li [:a {:href (path-for :items)} "Items of dbeaver-to-django-fixtures"]]
-      [:li [:a {:href "/broken/link"} "Broken link"]]]]))
+(def input-atom (reagent/atom "Paste a valid JSON!"))
+(def output-atom (reagent/atom ""))
 
+(defn handle-input [e]
+  (let [v (->> e .-target .-value)]
+    (try
+      (let [parsed-json (js->clj (.parse js/JSON v))]
+        (reset! input-atom v)
+        (reset! output-atom parsed-json))
+      (catch js/SyntaxError e))))
 
+(defn input-area [rows cols div-style]
+  [:div#output {:style div-style}
+   [:textarea {:value @input-atom
+               :on-change (fn [e]
+                            (handle-input e))
+               :rows rows :cols cols}]])
+
+(defn output-area [rows cols div-style]
+  [:div#input {:style div-style}
+   [:textarea {:value @output-atom
+               :rows rows :cols cols}]])
+
+(defn main-component []
+  (let [props (reagent/atom nil)]
+    [:div.main
+     [input-area 40 40 {:display "inline-block"}]
+     [output-area 40 40 {:display "inline-block"}]]))
 
 (defn items-page []
   (fn []
@@ -45,7 +64,6 @@
                   [:a {:href (path-for :item {:item-id item-id})} "Item: " item-id]])
                (range 1 60))]]))
 
-
 (defn item-page []
   (fn []
     (let [routing-data (session/get :route)
@@ -53,7 +71,6 @@
       [:span.main
        [:h1 (str "Item " item " of dbeaver-to-django-fixtures")]
        [:p [:a {:href (path-for :items)} "Back to the list of items"]]])))
-
 
 (defn about-page []
   (fn [] [:span.main
@@ -63,9 +80,10 @@
 ;; -------------------------
 ;; Translate routes -> page components
 
+
 (defn page-for [route]
   (case route
-    :index #'home-page
+    :index #'main-component
     :about #'about-page
     :items #'items-page
     :item #'item-page))
@@ -73,6 +91,7 @@
 
 ;; -------------------------
 ;; Page mounting component
+
 
 (defn current-page []
   (fn []
@@ -103,8 +122,7 @@
         (reagent/after-render clerk/after-render!)
         (session/put! :route {:current-page (page-for current-page)
                               :route-params route-params})
-        (clerk/navigate-page! path)
-        ))
+        (clerk/navigate-page! path)))
     :path-exists?
     (fn [path]
       (boolean (reitit/match-by-path router path)))})

@@ -1,9 +1,9 @@
 (ns dbeaver-to-django-fixtures.server
-    (:require
-     [dbeaver-to-django-fixtures.handler :refer [app]]
-     [config.core :refer [env]]
-     [ring.adapter.jetty :refer [run-jetty]])
-    (:gen-class))
+  (:require
+   [dbeaver-to-django-fixtures.handler :refer [app]]
+   [config.core :refer [env]]
+   [ring.adapter.jetty :refer [run-jetty]])
+  (:gen-class))
 
 (defn -main [& args]
   (let [port (or (env :port) 3000)]
