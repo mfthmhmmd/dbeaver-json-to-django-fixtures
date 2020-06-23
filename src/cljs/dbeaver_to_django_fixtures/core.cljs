@@ -5,6 +5,7 @@
    [reagent.session :as session]
    [reitit.frontend :as reitit]
    [clerk.core :as clerk]
+   [clojure.string :as str]
    [accountant.core :as accountant]))
 
 ;; -------------------------
@@ -29,12 +30,25 @@
 (def input-atom (reagent/atom "Paste a valid JSON!"))
 (def output-atom (reagent/atom ""))
 
+(defn s->django-app-name [s]
+  (str/replace s #"_" "."))
+
+(defn input-json->fixture-form [j]
+  (let [table-name (-> j first first)
+        contents (get j table-name)]
+    (mapv (fn [x] {"model" (s->django-app-name table-name)
+                   "pk" (x "id")
+                   "fields" (dissoc x "id")}) contents)))
+
+(defn clj->js->stringify [x]
+  (.stringify js/JSON (clj->js x)))
+
 (defn handle-input [e]
   (let [v (->> e .-target .-value)]
     (try
       (let [parsed-json (js->clj (.parse js/JSON v))]
         (reset! input-atom v)
-        (reset! output-atom parsed-json))
+        (reset! output-atom (input-json->fixture-form parsed-json)))
       (catch js/SyntaxError e))))
 
 (defn input-area [rows cols div-style]
@@ -46,8 +60,9 @@
 
 (defn output-area [rows cols div-style]
   [:div#input {:style div-style}
-   [:textarea {:value @output-atom
-               :rows rows :cols cols}]])
+   [:textarea {:value    (clj->js->stringify @output-atom)
+               :readOnly true
+               :rows     rows :cols cols}]])
 
 (defn main-component []
   (let [props (reagent/atom nil)]
