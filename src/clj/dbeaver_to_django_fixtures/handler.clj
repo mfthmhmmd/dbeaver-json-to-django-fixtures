@@ -8,8 +8,7 @@
 (def mount-target
   [:div#app
    [:h2 "Welcome to dbeaver-to-django-fixtures"]
-   [:p "please wait while Figwheel is waking up ..."]
-   [:p "(Check the js console for hints if nothing exciting happens.)"]])
+   [:p "waking up ..."]])
 
 (defn head []
   [:head

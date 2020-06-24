@@ -2,6 +2,7 @@
   (:require
    [reagent.core :as reagent :refer [atom]]
    [reagent.dom :as rdom]
+   [clojure.spec.alpha :as s]
    [reagent.session :as session]
    [reitit.frontend :as reitit]
    [clerk.core :as clerk]
@@ -27,29 +28,39 @@
 ;; -------------------------
 ;; Page components
 
-(def input-atom (reagent/atom "Paste a valid JSON!"))
+(def input-atom (reagent/atom "Paste a valid JSON from dbeaver!"))
 (def output-atom (reagent/atom ""))
+;(def debug-atom (reagent/atom nil))
+
+(s/def ::dbeaver-rows (s/coll-of map? :distinct true :min-count 1))
+(s/def ::dbeaver-schema (s/map-of string? ::dbeaver-rows))
 
 (defn s->django-app-name [s]
   (str/replace s #"_" "."))
 
 (defn input-json->fixture-form [j]
-  (let [table-name (-> j first first)
-        contents (get j table-name)]
-    (mapv (fn [x] {"model" (s->django-app-name table-name)
-                   "pk" (x "id")
-                   "fields" (dissoc x "id")}) contents)))
+  ;(reset! debug-atom j)
+  (if-let [valid? (s/valid? ::dbeaver-schema j)]
+    (let [table-name (-> j first first)
+          contents (get j table-name)]
+      (mapv (fn [x] {"model" (s->django-app-name table-name)
+                     "pk" (x "id")
+                     "fields" (dissoc x "id")}) contents))
+    ""))
 
 (defn clj->js->stringify [x]
   (.stringify js/JSON (clj->js x)))
 
+(defn parse-js->clj [v]
+  (try
+    (js->clj (.parse js/JSON v))
+    (catch js/Error e "")))
+
 (defn handle-input [e]
   (let [v (->> e .-target .-value)]
-    (try
-      (let [parsed-json (js->clj (.parse js/JSON v))]
-        (reset! input-atom v)
-        (reset! output-atom (input-json->fixture-form parsed-json)))
-      (catch js/SyntaxError e))))
+
+    (reset! input-atom v)
+    (reset! output-atom (input-json->fixture-form (parse-js->clj v)))))
 
 (defn input-area [rows cols div-style]
   [:div#output {:style div-style}
